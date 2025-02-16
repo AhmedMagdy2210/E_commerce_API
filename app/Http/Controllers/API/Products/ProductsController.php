@@ -22,13 +22,11 @@ class ProductsController extends Controller {
             'details.size',
             'details.color'
         ])->get();
-
         return $this->successResponse(ProductsResource::collection($products), 'All products', 200);
     }
 
     public function store(AddProductRequest $request) {
         $product = Product::create($request->validated());
-
         foreach ($request->details as $detail) {
             ProductDetail::create([
                 'product_id' => $product->id,
@@ -38,7 +36,6 @@ class ProductsController extends Controller {
                 'price' => $detail['price']
             ]);
         }
-
         return $this->successResponse(new ProductsResource($product), 'Product created successfully', 201);
     }
 
@@ -47,13 +44,18 @@ class ProductsController extends Controller {
             'category.childrenRecursive',
             'details.size',
             'details.color'
-        ])->findOrFail($id);
-
+        ])->find($id);
+        if (!$product) {
+            return $this->errorResponse('Product not found', 404);
+        }
         return $this->successResponse(new ProductsResource($product), 'Get the product', 200);
     }
 
     public function update(UpdateProductsRequest $request, $id) {
-        $product = Product::findOrFail($id);
+        $product = Product::find($id);
+        if (!$product) {
+            return $this->errorResponse('Product not found', 404);
+        }
         $product->update($request->only(['name', 'description', 'base_price', 'category_id']));
         if ($request->has('details') && isArray($request->details)) {
             foreach ($request->details as $detail) {
@@ -85,7 +87,10 @@ class ProductsController extends Controller {
     }
 
     public function destroy($id) {
-        $product = Product::findOrFail($id);
+        $product = Product::find($id);
+        if (!$product) {
+            return $this->errorResponse('Product not found', 404);
+        }
         $product->delete();
         return $this->successResponse([], 'Product deleted successfully', 200);
     }
