@@ -26,6 +26,8 @@ Route::prefix('dashboard')->middleware('auth:sanctum')->group(function () {
 Route::prefix('profile')->middleware('auth:sanctum')->group(function () {
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart', [CartController::class, 'store']);
+    Route::put('/cart/{id}', [CartController::class, 'update']);
+    Route::get('/cart/clear', [CartController::class, 'clear']);
 });
 
 Route::prefix('public')->group(function () {

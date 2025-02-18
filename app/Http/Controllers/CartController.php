@@ -64,19 +64,55 @@ class CartController extends Controller {
         }
         $price = $request->quantity * $productDetail->price;
         $cart = Cart::firstOrCreate(['user_id' => $userId]);
-        $cartItem = CartItem::updateOrCreate([
+        CartItem::updateOrCreate([
             'cart_id' => $cart->id,
             'product_details_id' => $request->product_detail_id,
         ], ['quantity' => DB::raw("quantity + {$request->quantity}"), 'price' => DB::raw("price + {$price}")]);
         //must update the cart->total_price after i create or update the cart_items so:
         $this->updateCartTotal($cart->id);
-        return $this->successResponse($cartItem, "The item added successfully", 200);
+        return $this->successResponse([], "The item added successfully", 200);
     }
-
-
-
     public function updateCartTotal($cartId) {
         $totalPrice = CartItem::where('cart_id', $cartId)->sum('price');
         Cart::where('id', $cartId)->update(['total_price' => $totalPrice]);
+    }
+    public function update(Request $request, $id) {
+        $userId = Auth::id();
+        $validator = Validator::make($request->all(), [
+            'quantity' => 'required|integer|min:1'
+        ]);
+        if ($validator->fails()) {
+            return $this->failedValidationResponse($validator->errors());
+        }
+        $cart = Cart::where('user_id', $userId)->first();
+        $cartItem = CartItem::where('cart_id', $cart->id)->where('id', $id)->first();
+        if (!$cartItem) {
+            return $this->errorResponse('No item to update', 404);
+        }
+        $productDetail = $cartItem->product_details;
+        if ($productDetail->stock_quantity < $request->quantity) {
+            return response()->json(['message' => 'Not enough stock available'], 400);
+        }
+        $cartItem->update([
+            'quantity' => $request->quantity,
+            'price' => $productDetail->price * $request->quantity,
+        ]);
+        $this->updateCartTotal($cart->id);
+        return $this->successResponse([], "The cart updated successfully", 200);
+    }
+    public function clear() {
+        $userId = Auth::id();
+        $cart = Cart::where('user_id', $userId)->first();
+        if (!$cart) {
+            return $this->errorResponse('There is no cart to clear', 400);
+        }
+        $cartItems = CartItem::where('cart_id', $cart->id)->get();
+        if ($cartItems->isEmpty()) {
+            return $this->errorResponse('There is noting in cart to clear', 400);
+        }
+        CartItem::where('cart_id', $cart->id)->delete();
+        $cart->update(['total_price' => 0]);
+        // dd($cart);
+        return $this->successResponse([], 'Cart cleared successfully');
     }
 }
