@@ -17,4 +17,7 @@ class ProductDetail extends Model {
     public function color() {
         return $this->belongsTo(Color::class);
     }
+    public function cartItems() {
+        return $this->hasMany(CartItem::class , 'product_details_id');
+    }
 }
